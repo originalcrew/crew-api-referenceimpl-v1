@@ -1,0 +1,21 @@
+assembly-versioning-scheme: MajorMinorPatchTag
+assembly-file-versioning-scheme: MajorMinorPatchTag
+mode: ContinuousDeployment
+continuous-delivery-fallback-tag: ""
+branches:
+  master:
+    mode: ContinuousDeployment
+    tag: "ci"
+    increment: Minor
+    track-merge-target: true
+    tracks-release-branches: true
+    is-release-branch: false
+    prevent-increment-of-merged-branch-version: false
+  release:
+    regex: release?[/]
+    mode: ContinuousDeployment
+    increment: Patch
+    is-release-branch: true
+    prevent-increment-of-merged-branch-version: true
+ignore:
+  sha: []

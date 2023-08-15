@@ -1,0 +1,21 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "crew-api-referenceimpl-v1.fullname" . }}
+spec:
+  hosts:
+  - {{ .Values.istio.host }}
+  gateways:
+  - {{ .Values.istio.gateway }}
+  http:
+  - route:
+    - destination:
+        port:
+          number: 8080
+      {{- if .Values.service.servicename }}
+        host: {{ .Values.service.servicename }}
+      {{- else }}
+        host: {{ include "crew-api-referenceimpl-v1.fullname" . }}
+      {{- end }}
+{{- end -}}

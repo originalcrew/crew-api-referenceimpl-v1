@@ -1,0 +1,30 @@
+apiVersion: skaffold/v1beta13
+kind: Config
+build:
+  artifacts:
+    - image: ghcr.io/originalcrew/crew-api-referenceimpl-v1
+      context: .
+  local:
+    push: false
+  tagPolicy:
+    gitCommit: {}
+test:
+  - image: ghcr.io/originalcrew/crew-api-referenceimpl-v1
+    structureTests:
+      - ./tests/container-structure/*.yaml
+deploy:
+  helm:
+    releases:
+      - name: dev-crew-api-referenceimpl-v1
+        chartPath: ./charts/crew-api-referenceimpl-v1
+        values:
+          "image.repository": ghcr.io/originalcrew/crew-api-referenceimpl-v1
+                
+profiles:
+  - name: github_actions
+    build:
+      local:
+        push: true
+      tagPolicy:
+        envTemplate:
+          template: "{{.SEMVER}}"

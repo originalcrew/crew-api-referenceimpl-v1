@@ -1,0 +1,73 @@
+name: Build & Test
+on:
+  push:
+    branches:
+      - "**"
+      - "!master"
+      - "!release/v*"
+
+jobs:
+  build_test:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      SemVer: ${{ steps.gitversion.outputs.SemVer }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.9
+        with:
+          versionSpec: "5.6.6"
+
+      - name: Use GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.9.9
+        with:
+          additionalArguments: /updateassemblyinfo
+
+      - name: Install skaffold
+        run: |
+          sudo curl --silent --show-error --location --fail --retry 3 --output /usr/bin/skaffold https://github.com/GoogleContainerTools/skaffold/releases/download/v1.20.0/skaffold-linux-amd64
+          sudo chmod +x /usr/bin/skaffold
+
+      - name: Install container-structure-test
+        run: |
+          sudo curl --silent --show-error --location --fail --retry 3 --output /usr/bin/container-structure-test https://storage.googleapis.com/container-structure-test/v1.10.0/container-structure-test-linux-amd64
+          sudo chmod +x /usr/bin/container-structure-test
+
+      - name: Build image
+        env:
+          SEMVER: ${{ steps.gitversion.outputs.SemVer }}
+        run: |
+          skaffold build
+
+      - name: Copying test results from container
+        run: |
+          mkdir -p ./tests/TestResults
+          export id=$(docker images --filter "label=test=true" -q | head -1)
+          docker create --name testcontainer $id
+          docker cp testcontainer:/testresults/junit ./tests/TestResults/
+
+      - name: Persist Test Results
+        uses: actions/upload-artifact@v1
+        with:
+          name: tests
+          path: tests/TestResults
+
+      - name: Replace versions in Helm chart
+        shell: bash
+        run: |
+          sed -i "/^\([[:space:]]*version: \).*/s//\1${{ steps.gitversion.outputs.SemVer }}/" ./charts/crew-api-referenceimpl-v1/Chart.yaml
+          sed -i "/^\([[:space:]]*appVersion: \).*/s//\1${{ steps.gitversion.outputs.SemVer }}/" ./charts/crew-api-referenceimpl-v1/Chart.yaml
+          sed -i "/^\s*repository:.*/a\  tag: \"${{ steps.gitversion.outputs.SemVer }}\"" ./charts/crew-api-referenceimpl-v1/values.yaml
+
+      - name: Install Helm
+        shell: bash
+        run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+      - name: Lint Helm chart
+        run: helm lint charts/crew-api-referenceimpl-v1

@@ -1,0 +1,6 @@
+apiVersion: v1
+description: A Helm chart to deploy crew-api-referenceimpl-v1
+name: crew-api-referenceimpl-v1
+# The version gets updated during the CI build. Do not change it.
+version: 0.0.1
+appVersion: 0.0.1
